@@ -11,13 +11,13 @@ tags:
 
 inputs:
   prompt: |
-    fixtures/failing-skill-sample.md はエージェントが期待通りに動かないスキルです。
-    empirical-prompt-tuning を使って以下を行ってください:
-    1. Iteration 0: description と body の整合チェック（静的審査）
-    2. 不明瞭点を列挙する
-    3. 最小修正案を 1 つ提示する
+    failing-skill-sample.md はエージェントが期待通りに動かないスキルです。
+    empirical-prompt-tuning ワークフローを適用してください:
+    - Iteration 0: description と body の整合チェック（静的審査）
+    - Iteration 1: 新規 subagent を dispatch してバイアス排除で実行し、不明瞭点を収集する
+    - 収束判定を行い、最小修正案を 1 つ提示する
   files:
-    - path: fixtures/failing-skill-sample.md
+    - path: failing-skill-sample.md
 
 expected:
   output_contains_any:

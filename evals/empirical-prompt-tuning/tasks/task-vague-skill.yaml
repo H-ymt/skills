@@ -17,7 +17,7 @@ inputs:
     Iteration 0 から開始し、少なくとも 2 回の反復を行い、
     各イテレーションの評価結果（自己申告 + メトリクス）を記録してください。
   files:
-    - path: fixtures/vague-skill-sample.md
+    - path: vague-skill-sample.md
 
 expected:
   output_contains_any:
