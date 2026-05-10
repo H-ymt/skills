@@ -1,0 +1,68 @@
+name: Waza Skill Eval
+
+on:
+  pull_request:
+    paths:
+      - "skills/**"
+      - "evals/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "skills/**"
+      - "evals/**"
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    name: Mock dry-run (${{ matrix.model }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        model:
+          - claude-opus-4.6
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install waza
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/microsoft/waza/main/install.sh | bash
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - name: Verify waza installed
+        run: waza --version
+
+      - name: Run evaluations (mock dry-run)
+        env:
+          EVAL_MODEL: ${{ matrix.model }}
+        run: |
+          set +e
+          waza run evals/empirical-prompt-tuning/eval.yaml \
+            --model "$EVAL_MODEL" \
+            --output "results-${EVAL_MODEL}.json" \
+            --verbose
+          status=$?
+          if [ $status -eq 2 ]; then
+            echo "::error::waza run が設定/実行エラーで終了しました (exit 2)"
+            exit 2
+          fi
+          if [ ! -f "results-${EVAL_MODEL}.json" ]; then
+            echo "::error::waza run が結果ファイルを生成できませんでした"
+            exit 1
+          fi
+          echo "Mock dry-run completed (waza exit $status)."
+
+      - name: Upload results
+        if: always()
+        env:
+          EVAL_MODEL: ${{ matrix.model }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.model }}
+          path: results-${{ matrix.model }}.json
+          retention-days: 30

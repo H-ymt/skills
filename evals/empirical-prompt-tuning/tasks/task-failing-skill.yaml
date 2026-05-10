@@ -1,0 +1,31 @@
+id: empirical-prompt-tuning-failing-skill
+name: 失敗しているスキルの診断と改善
+description: |
+  エージェントが期待通り動かないスキルに対して原因分析と改善提案ができるか検証する。
+  Red flag の検出、不明瞭点の特定、最小修正案の提示が含まれているかを評価する。
+
+tags:
+  - empirical-prompt-tuning
+  - diagnosis
+  - red-flag
+
+inputs:
+  prompt: |
+    fixtures/failing-skill-sample.md はエージェントが期待通りに動かないスキルです。
+    empirical-prompt-tuning を使って以下を行ってください:
+    1. Iteration 0: description と body の整合チェック（静的審査）
+    2. 不明瞭点を列挙する
+    3. 最小修正案を 1 つ提示する
+  files:
+    - path: fixtures/failing-skill-sample.md
+
+expected:
+  output_contains_any:
+    - "不明瞭"
+    - "曖昧"
+    - "Red flag"
+    - "改善"
+    - "修正案"
+  behavior:
+    max_tool_calls: 15
+    max_response_time_ms: 120000
