@@ -5,7 +5,6 @@
 
 set -euo pipefail
 
-DRY_RUN=false
 JSON_OUTPUT=false
 [[ "${1:-}" == "--json" ]] && JSON_OUTPUT=true
 
@@ -37,18 +36,16 @@ tool_installed() {
 # ─── APFS-Aware Disk Overview ────────────────────────────────────────────────
 # df on APFS shows per-volume stats which can be misleading.
 # Use diskutil to get the real container-level picture.
-DISK_TOTAL=$(df -h / | awk 'NR==2{print $2}')
-DISK_USED=$(df -h / | awk 'NR==2{print $3}')
-DISK_FREE=$(df -h / | awk 'NR==2{print $4}')
-DISK_PCT=$(df -h / | awk 'NR==2{print $5}')
+read -r DISK_TOTAL DISK_USED DISK_FREE DISK_PCT < <(df -h / | awk 'NR==2{print $2, $3, $4, $5}')
 
 # Get real APFS container stats (Data volume is where user files live)
 DATA_VOLUME_USED=""
 APFS_CONTAINER_FREE=""
 if command -v diskutil &>/dev/null; then
-  DATA_VOLUME_USED=$(diskutil apfs list 2>/dev/null | grep -A6 "Role.*Data" | \
+  APFS_LIST=$(diskutil apfs list 2>/dev/null) || true
+  DATA_VOLUME_USED=$(echo "$APFS_LIST" | grep -A6 "Role.*Data" | \
     grep "Capacity Consumed" | head -1 | sed 's/.*: *//' | awk '{printf "%.1f GB", $1/1024/1024/1024}') || true
-  APFS_CONTAINER_FREE=$(diskutil apfs list 2>/dev/null | grep "Capacity Not Allocated" | head -1 | \
+  APFS_CONTAINER_FREE=$(echo "$APFS_LIST" | grep "Capacity Not Allocated" | head -1 | \
     sed 's/.*: *//' | awk '{printf "%.1f GB", $1/1024/1024/1024}') || true
 fi
 
@@ -93,9 +90,11 @@ _nm_find() {
        -o -path "$HOME/Pictures" -o -path "$HOME/.*" \) -prune \
     -o -name "node_modules" -type d -print 2>/dev/null
 }
-NM_COUNT=$( (_nm_find; true) | grep -v '.*/node_modules/.*/node_modules$' | wc -l | tr -d ' ')
-NM_SIZE=$( (_nm_find; true) | grep -v '.*/node_modules/.*/node_modules$' | \
-  (xargs du -sk 2>/dev/null || true) | awk '{sum+=$1} END {printf "%.1fGB", sum/1024/1024}')
+# Run the (expensive whole-home) scan once, derive both count and size from it.
+NM_DIRS=$( (_nm_find; true) | grep -v '.*/node_modules/.*/node_modules$' )
+NM_COUNT=$(printf '%s' "$NM_DIRS" | grep -c . | tr -d ' ')
+NM_SIZE=$(printf '%s' "$NM_DIRS" | (grep . | xargs du -sk 2>/dev/null || true) | \
+  awk '{sum+=$1} END {printf "%.1fGB", sum/1024/1024}')
 
 # Time Machine snapshots
 TM_SNAPS=$(tmutil listlocalsnapshots / 2>/dev/null | wc -l | tr -d ' ')
@@ -105,7 +104,6 @@ DOWNLOADS=$(size_of ~/Downloads)
 
 # ─── Stale Toolchain Detection ───────────────────────────────────────────────
 RUSTUP_SIZE=$(size_of ~/.rustup)
-PUB_CACHE_SIZE=$(size_of ~/.pub-cache)
 CARGO_SIZE=$(size_of ~/.cargo)
 
 # ─── Application Support Deep Scan ───────────────────────────────────────────
@@ -179,7 +177,7 @@ if [[ -d ~/.cargo ]] && [[ "$HAS_CARGO" != "yes" ]]; then
   printf "║  %-28s %-10s  ${YELLOW}MED${RESET}     ⚠️  Stale?     ║\n" "Cargo (.cargo)" "$CARGO_SIZE"
 fi
 if [[ -d ~/.pub-cache ]] && [[ "$HAS_FLUTTER" != "yes" ]]; then
-  printf "║  %-28s %-10s  ${YELLOW}MED${RESET}     ⚠️  Stale?     ║\n" "Flutter (.pub-cache)" "$PUB_CACHE_SIZE"
+  printf "║  %-28s %-10s  ${YELLOW}MED${RESET}     ⚠️  Stale?     ║\n" "Flutter (.pub-cache)" "$PUB_CACHE"
 fi
 if [[ -d ~/go/pkg ]] && [[ "$HAS_GO" != "yes" ]]; then
   printf "║  %-28s %-10s  ${YELLOW}MED${RESET}     ⚠️  Stale?     ║\n" "Go cache (no go binary)" "$GO_MOD_CACHE"

@@ -42,11 +42,11 @@ delete_path() {
   fi
 
   if [[ "$DRY_RUN" == "true" ]]; then
-    log "  [DRY-RUN] Would delete: $path (~$(echo "$kb/1024" | bc) MB)"
+    log "  [DRY-RUN] Would delete: $path (~$((kb/1024)) MB)"
   else
     if [[ -e "$path" ]]; then
       if rm -rf "$path" 2>/dev/null; then
-        log "  ✅ Deleted: $label (~$(echo "$kb/1024" | bc) MB)"
+        log "  ✅ Deleted: $label (~$((kb/1024)) MB)"
         FREED=$((FREED + kb))
       else
         log "  ⚠️  Failed: $path"
@@ -109,10 +109,10 @@ fi
 echo -e "\n${BOLD}Trash:${RESET}"
 TRASH_SIZE=$(size_kb ~/.Trash)
 if [[ "$DRY_RUN" == "true" ]]; then
-  echo "  [DRY-RUN] Would empty Trash (~$(echo "$TRASH_SIZE/1024" | bc) MB)"
+  echo "  [DRY-RUN] Would empty Trash (~$((TRASH_SIZE/1024)) MB)"
 else
   osascript -e 'tell application "Finder" to empty trash' 2>/dev/null && \
-    echo "  ✅ Trash emptied (~$(echo "$TRASH_SIZE/1024" | bc) MB)" || \
+    echo "  ✅ Trash emptied (~$((TRASH_SIZE/1024)) MB)" || \
     echo "  ⚠️  Could not empty Trash via Finder"
   FREED=$((FREED + TRASH_SIZE))
 fi
@@ -121,6 +121,6 @@ echo ""
 if [[ "$DRY_RUN" == "true" ]]; then
   echo -e "${YELLOW}Dry-run complete. Run without --dry-run to execute.${RESET}"
 else
-  echo -e "${GREEN}${BOLD}Phase 1 complete. Freed: ~$(echo "$FREED/1024/1024" | bc) GB${RESET}"
+  echo -e "${GREEN}${BOLD}Phase 1 complete. Freed: ~$((FREED/1024/1024)) GB${RESET}"
 fi
-log "Phase 1 complete. Freed: ~$(echo "$FREED/1024" | bc) MB"
+log "Phase 1 complete. Freed: ~$((FREED/1024)) MB"

@@ -16,10 +16,29 @@ log() { echo "$1" | tee -a "$LOG_FILE"; }
 size_kb() { [[ -e "$1" ]] && du -sk "$1" 2>/dev/null | cut -f1 || echo "0"; }
 size_of() { [[ -e "$1" ]] && du -sh "$1" 2>/dev/null | cut -f1 || echo "0B"; }
 
+# Load protected paths (Hard Rule #12 — check before every deletion)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROTECTED="$SCRIPT_DIR/../config/protected_paths.txt"
+
+is_protected() {
+  local path="$1"
+  [[ -f "$PROTECTED" ]] || return 1
+  while IFS= read -r pp; do
+    [[ "$pp" =~ ^[[:space:]]*# || -z "${pp// }" ]] && continue
+    local expanded="${pp/#\~/$HOME}"
+    [[ "$path" == "$expanded" || "$path" == "${expanded}/"* ]] && return 0
+  done < "$PROTECTED"
+  return 1
+}
+
 delete_path() {
   local path="$1" label="$2"
   local kb
   kb=$(size_kb "$path")
+  if is_protected "$path"; then
+    log "  SKIPPED (protected): $path"
+    return
+  fi
   if [[ "$DRY_RUN" == "true" ]]; then
     log "  [DRY-RUN] Would delete: $label (~$((kb/1024)) MB)"
   else
