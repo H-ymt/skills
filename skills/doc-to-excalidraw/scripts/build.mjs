@@ -20,6 +20,7 @@ const INK = "#1e1e1e";
 const SUB = "#495057";
 const MUTED = "#5c6670";
 const ACCENT = "#1971c2";
+const SLIDE_BG = "#f8f9fa";
 const COLORS = {
   blue: ["#e7f5ff", "#1971c2"],
   green: ["#ebfbee", "#2f9e44"],
@@ -317,9 +318,14 @@ function layoutSlides(columns) {
   for (const sec of columns.flat()) {
     const start = elements.length;
     const bottom = renderSlideSection(x + PAD_X, PAD_Y, W - PAD_X * 2, sec);
-    const frame = base("frame", x, 0, W, H, { name: sec.heading, roughness: 0, roundness: null });
-    for (const el of elements.slice(start)) el.frameId = frame.id;
-    elements.splice(start, 0, frame);
+    // フレームは枠線が出るため使わない。枠線なしの背景でスライドの範囲を示す
+    const bg = base("rectangle", x, 0, W, H, {
+      strokeColor: "transparent",
+      backgroundColor: SLIDE_BG,
+      roughness: 0,
+      locked: true,
+    });
+    elements.splice(start, 0, bg);
     if (bottom > H - PAD_Y + u(24)) {
       console.warn(`警告: 「${sec.heading}」がスライドに収まらない（下端 ${Math.round(bottom)} > ${H}）。セクションを分割する`);
     }
