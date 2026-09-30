@@ -2,10 +2,10 @@
 // 内容 JSON（references/spec-schema.md）から .excalidraw を生成する。
 //
 // 使い方: node build.mjs <spec.json> <out.excalidraw> [--layout board|slide] [--font <名前>]
+//         [--icon-set <Iconify の prefix>] [--logo-set <Iconify の prefix>]
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
+import { loadSvg, sectionIcon, sizeSvg } from "./icons.mjs";
 
 // ── 定数 ─────────────────────────────────────────────────
 // Excalidraw の fontFamily ID
@@ -27,8 +27,6 @@ const COLORS = {
   orange: ["#fff4e6", "#e8590c"],
   gray: ["#f1f3f5", "#495057"],
 };
-const ICON_CDN = "https://unpkg.com/lucide-static@latest/icons";
-const ICON_CACHE = join(tmpdir(), "doc-to-excalidraw-icons");
 
 // ── 引数 ─────────────────────────────────────────────────
 const [specPath, outPath, ...flags] = process.argv.slice(2);
@@ -39,9 +37,11 @@ const flag = (name, fallback) => {
 const LAYOUT = flag("--layout", "board");
 const FONT_NAME = flag("--font", "excalifont");
 const FONT = FONTS[FONT_NAME];
+// 見出しのアイコンの既定の取得先。名前だけの指定はここから取る
+const SETS = { icon: flag("--icon-set", "lucide"), logo: flag("--logo-set", "logos") };
 if (!specPath || !outPath || !["board", "slide"].includes(LAYOUT) || !FONT) {
   console.error(
-    `使い方: node build.mjs <spec.json> <out.excalidraw> [--layout board|slide] [--font ${Object.keys(FONTS).join("|")}]`,
+    `使い方: node build.mjs <spec.json> <out.excalidraw> [--layout board|slide] [--font ${Object.keys(FONTS).join("|")}] [--icon-set <prefix>] [--logo-set <prefix>]`,
   );
   process.exit(1);
 }
@@ -140,14 +140,12 @@ function text(x, y, str, fs, color = INK, opts = {}) {
   return { el, h };
 }
 
-function icon(name, x, y, size, color = ACCENT) {
-  const svg = svgCache
-    .get(name)
-    .replace(/currentColor/g, color)
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/width="24"/, `width="${size}"`)
-    .replace(/height="24"/, `height="${size}"`);
-  const fileId = `icon-${name}-${color.slice(1)}`;
+// 見出しのアイコンを置き、幅を返す。アイコンはアクセント色、ロゴは元の色を保つ（単色ロゴは INK）
+function icon(sec, x, y, size) {
+  const ref = sectionIcon(sec, SETS);
+  const color = ref.kind === "logo" ? INK : ACCENT;
+  const { svg, width } = sizeSvg(svgCache.get(`${ref.prefix}:${ref.name}`), size, color);
+  const fileId = `${ref.kind}-${ref.prefix}-${ref.name}-${size}-${color.slice(1)}`;
   files[fileId] ??= {
     mimeType: "image/svg+xml",
     id: fileId,
@@ -155,8 +153,9 @@ function icon(name, x, y, size, color = ACCENT) {
     created: 1,
   };
   elements.push(
-    base("image", x, y, size, size, { fileId, status: "saved", scale: [1, 1], crop: null, roughness: 0 }),
+    base("image", x, y, width, size, { fileId, status: "saved", scale: [1, 1], crop: null, roughness: 0 }),
   );
+  return width;
 }
 
 function box(x, y, w, h, label, fs, color) {
@@ -250,14 +249,14 @@ const renderItems = (cx, y, iw, items) => items.reduce((yy, it) => renderItem(cx
 
 function renderHeading(cx, y, iw, sec) {
   if (sec.hero) {
-    icon(sec.icon, cx, y, u(64));
+    icon(sec, cx, y, u(64));
     y += u(84);
     y += text(cx, y, sec.heading, 54, INK).h + u(16);
     if (sec.subtitle) y += text(cx, y, sec.subtitle, 26, ACCENT, { maxW: iw }).h + u(14);
     return y + u(34);
   }
-  icon(sec.icon, cx, y, u(40));
-  text(cx + u(56), y + u(2), sec.heading, 30, INK);
+  const iconW = icon(sec, cx, y, u(40));
+  text(cx + iconW + u(16), y + u(2), sec.heading, 30, INK);
   return y + u(64);
 }
 
@@ -341,8 +340,8 @@ function validate(spec) {
   for (const col of spec.columns) {
     if (!Array.isArray(col) || col.length === 0) throw new Error("column は 1 つ以上のセクションを持つ配列にする");
     for (const sec of col) {
-      if (!sec.heading || !sec.icon || !Array.isArray(sec.items)) {
-        throw new Error(`section には heading / icon / items が必要: ${JSON.stringify(sec.heading)}`);
+      if (!sec.heading || !(sec.icon || sec.logo) || !Array.isArray(sec.items)) {
+        throw new Error(`section には heading / icon か logo / items が必要: ${JSON.stringify(sec.heading)}`);
       }
       for (const it of sec.items) {
         if (it.diagram && !DIAGRAMS[it.diagram.type]) {
@@ -356,22 +355,14 @@ function validate(spec) {
   }
 }
 
-async function loadIcon(name) {
-  const cached = join(ICON_CACHE, `${name}.svg`);
-  if (existsSync(cached)) return readFileSync(cached, "utf8");
-  const res = await fetch(`${ICON_CDN}/${name}.svg`);
-  if (!res.ok) throw new Error(`Lucide にアイコンがない: ${name}（https://lucide.dev/icons で確認）`);
-  const svg = await res.text();
-  mkdirSync(ICON_CACHE, { recursive: true });
-  writeFileSync(cached, svg);
-  return svg;
-}
-
 // ── 実行 ─────────────────────────────────────────────────
 const spec = JSON.parse(readFileSync(specPath, "utf8"));
 validate(spec);
-const names = new Set(spec.columns.flat().map((s) => s.icon));
-for (const name of names) svgCache.set(name, await loadIcon(name));
+for (const sec of spec.columns.flat()) {
+  const ref = sectionIcon(sec, SETS);
+  const key = `${ref.prefix}:${ref.name}`;
+  if (!svgCache.has(key)) svgCache.set(key, await loadSvg(ref));
+}
 
 (LAYOUT === "slide" ? layoutSlides : layoutBoard)(spec.columns);
 

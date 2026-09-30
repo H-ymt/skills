@@ -1,6 +1,6 @@
 ---
 name: doc-to-excalidraw
-description: Markdown やドキュメントの文章を、Excalidraw の横長ボード（またはスライド）にするスキル。見出しごとに列を分け、本文はテキスト中心、図解は分岐や組み合わせなど必要な箇所だけ、アイコンは Lucide を使う。フォントは既定で Excalifont（「フォントは〜を使用」で変更できる）。「この文書を Excalidraw にして」「スライドの代わりに横長で」「ガイドラインを図にして」「.excalidraw にまとめて」といった指示でトリガーする。構成図やアーキテクチャ図を描く場合は excalidraw:draw を使い、このスキルは使わない。
+description: Markdown やドキュメントの文章を、Excalidraw の横長ボード（またはスライド）にするスキル。見出しごとに列を分け、本文はテキスト中心、図解は分岐や組み合わせなど必要な箇所だけ。アイコンは既定で Lucide、製品のロゴは SVG Logos を使う（「アイコンは〜で」「ロゴは〜で」で変更できる）。フォントは既定で Excalifont（「フォントは〜を使用」で変更できる）。「この文書を Excalidraw にして」「スライドの代わりに横長で」「ガイドラインを図にして」「.excalidraw にまとめて」といった指示でトリガーする。構成図やアーキテクチャ図を描く場合は excalidraw:draw を使い、このスキルは使わない。
 ---
 
 # 文書 → Excalidraw
@@ -33,6 +33,22 @@ description: Markdown やドキュメントの文章を、Excalidraw の横長�
 - 日本語の文字は、どのフォントでも代替フォントで表示される（Excalidraw のフォントに日本語の字形はない）。
 - 表にない名前を指定されたら、近いものを提案して確認する。
 
+## アイコンとロゴ
+
+見出しには、アイコンかロゴを 1 つ付ける。取得先は [Iconify](https://icon-sets.iconify.design) にまとめている。
+
+| 種類 | 使う場面 | 既定のセット | 切り替え |
+|---|---|---|---|
+| アイコン（`icon`） | 一般的な概念（設定、確認、キーボードなど） | `lucide`（[Lucide](https://lucide.dev/icons)） | `--icon-set <prefix>` |
+| ロゴ（`logo`） | 見出しが特定の SaaS・OSS・製品の話のとき | `logos`（[SVG Logos](https://icon-sets.iconify.design/logos/)、カラー） | `--logo-set <prefix>` |
+
+- ユーザーが「アイコンは Tabler で」「ロゴは Simple Icons で」のように指定したら、`--icon-set tabler` や `--logo-set simple-icons` で既定のセットを切り替える。
+- 1 つの見出しだけ別のセットにしたいときは、内容 JSON に `prefix:name`（例: `"logo": "devicon:react"`）と書く。
+- よく使うセット: アイコンは `lucide` `tabler` `heroicons` `phosphor`、ロゴは `logos`（カラー）`simple-icons`（単色）`devicon`。
+- 見出しのロゴは、ワードマーク（`logos:cloudflare`）ではなくシンボル（`logos:cloudflare-icon`）を選ぶ。見出しの文字と名前が重なるため。
+- 名前はセットごとに違う。見つからないとエラーになるので、Iconify で名前を確認して直す。
+- ロゴの色や形は変えない。ロゴの自作やトレースもしない。
+
 ## ステップ1: 内容を分ける
 
 元の文書を読み、内容 JSON にまとめる。判断は次の 3 つ。
@@ -50,16 +66,16 @@ frontmatter がある場合、`title` を先頭の `hero` セクションの見�
 
 スクラッチパッドに書く。形式は [`spec-schema.md`](references/spec-schema.md) に従う。
 
-- アイコンは [Lucide](https://lucide.dev/icons) の名前（例: `keyboard`, `palette`）。見出しごとに、内容が想像できるものを選ぶ。
+- 見出しごとに、内容が想像できるアイコン（例: `keyboard`, `palette`）か、製品のロゴ（例: `cloudflare-icon`）を選ぶ。
 - `\n` で改行を指定できるのは、図解の箱の文字だけ。本文は自動で折り返される。
 
 ## ステップ3: 生成する
 
 ```bash
-node scripts/build.mjs <spec.json> <out.excalidraw> [--layout board|slide] [--font <名前>]
+node scripts/build.mjs <spec.json> <out.excalidraw> [--layout board|slide] [--font <名前>] [--icon-set <prefix>] [--logo-set <prefix>]
 ```
 
-- Node.js 24 以上。アイコンは初回に unpkg から取得し、一時ディレクトリにキャッシュする（ネットワークが必要）。
+- Node.js 24 以上。アイコンとロゴは初回に Iconify API から取得し、一時ディレクトリにキャッシュする（ネットワークが必要）。
 - 出力先の指定がなければ `~/Downloads/` に置く。ファイル名は文書の題名の kebab-case にする。
 - `slide` で「収まらない」警告が出たら、そのセクションを 2 つに分けて再生成する。
 
@@ -75,7 +91,7 @@ node scripts/build.mjs <spec.json> <out.excalidraw> [--layout board|slide] [--fo
 - `board` は枠を付けない。列の区切りは余白だけで表す。
 - 見出しと本文はテキスト中心にする。色は、図解の箱と見出しのアクセントに限る。
 - 本文の文字サイズは 18px 以上（`slide` は拡大される）。灰色の文字も、背景に対して 4.5:1 以上を保つ。
-- アイコンは Lucide だけを使う。ほかのライブラリと混ぜない。
+- アイコンは 1 つのセットに揃える（既定は Lucide）。ロゴはロゴ用のセットから取る。
 
 ## 制約
 

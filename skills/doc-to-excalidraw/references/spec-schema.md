@@ -17,11 +17,19 @@
 
 | キー | 型 | 必須 | 説明 |
 |---|---|---|---|
-| `heading` | string | ○ | 見出し。`slide` ではフレーム名にもなる |
-| `icon` | string | ○ | [Lucide](https://lucide.dev/icons) のアイコン名（kebab-case） |
+| `heading` | string | ○ | 見出し |
+| `icon` | string | △ | 一般的なアイコンの名前。既定は [Lucide](https://lucide.dev/icons)。`tabler:keyboard` のように `prefix:name` で書けば、そのセットから取る |
+| `logo` | string | △ | 製品・サービスのロゴ名。既定は [SVG Logos](https://icon-sets.iconify.design/logos/)（例: `cloudflare-icon`）。`simple-icons:cloudflare` のように書けば、そのセットから取る。`icon` より優先する |
 | `items` | Item[] | ○ | 本文 |
 | `hero` | boolean |  | true で大きな見出し（題名用）にする |
 | `subtitle` | string |  | `hero` のときだけ有効。見出し下のアクセント色の 1 行 |
+
+△: `icon` と `logo` のどちらか一方が必要。
+
+- 取得先は [Iconify](https://icon-sets.iconify.design) にまとめている。`prefix` は Iconify のセット名（`lucide` `tabler` `logos` `simple-icons` `devicon` など）。
+- 同じ製品でも、セットによって名前が違う（例: `logos:cloudflare-icon` と `simple-icons:cloudflare`）。
+- アイコンはアクセント色で塗る。ロゴは元の色を保ち、単色のロゴは本文と同じ色にする。
+- ロゴは高さを揃え、幅は元の比率に合わせる。見出しの文字はロゴの右に置く。
 
 ## Item
 
@@ -66,4 +74,4 @@
 - `slide`:
   - 図解か `callout` がある Section は、左に本文、右に図解を置く。末尾の `muted` だけの項目は、右に回る。
   - 図解も `callout` もなく、項目が 4 つ以上の Section は 2 段組みにする。
-  - 下端がフレームに収まらないと、警告を出す。Section を分ける。
+  - 下端がスライドの余白に入り込むと、警告を出す。Section を分ける。
