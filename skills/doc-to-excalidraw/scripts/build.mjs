@@ -286,7 +286,7 @@ function renderSlideSection(cx, y, iw, sec) {
       renderItems(cx + colW + colGap, top, colW, main.slice(half)),
     );
   }
-  return renderItems(cx, top, Math.min(iw, u(600)), main);
+  return renderItems(cx, top, Math.min(iw, u(800)), main);
 }
 
 // ── レイアウト ───────────────────────────────────────────
@@ -307,18 +307,20 @@ function layoutBoard(columns) {
 }
 
 function layoutSlides(columns) {
-  const W = 1280;
-  const H = 720;
-  const PAD = 72;
-  const GAP = 80;
+  // 16:9。文字の拡大率（SCALE）に対して面積を広く取り、スライドらしい余白を残す
+  const W = 1600;
+  const H = 900;
+  const PAD_X = 136;
+  const PAD_Y = 112;
+  const GAP = 200;
   let x = 60;
   for (const sec of columns.flat()) {
     const start = elements.length;
-    const bottom = renderSlideSection(x + PAD, PAD, W - PAD * 2, sec);
+    const bottom = renderSlideSection(x + PAD_X, PAD_Y, W - PAD_X * 2, sec);
     const frame = base("frame", x, 0, W, H, { name: sec.heading, roughness: 0, roundness: null });
     for (const el of elements.slice(start)) el.frameId = frame.id;
     elements.splice(start, 0, frame);
-    if (bottom > H - 24) {
+    if (bottom > H - PAD_Y + u(24)) {
       console.warn(`警告: 「${sec.heading}」がスライドに収まらない（下端 ${Math.round(bottom)} > ${H}）。セクションを分割する`);
     }
     x += W + GAP;
