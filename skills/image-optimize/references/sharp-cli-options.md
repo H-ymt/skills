@@ -43,7 +43,7 @@ npx sharp-cli -i input.jpg -o out.webp -q 80 resize <width> [height]
 
 ```bash
 # 幅のみ指定（高さは自動スケール）
-npx sharp-cli -i img.jpg -o img-1440.webp -q 80 resize 1440
+npx sharp-cli -i img.jpg -o img.webp -q 80 resize 1440
 
 # 高さのみ指定
 npx sharp-cli -i img.jpg -o img-h800.webp -q 80 resize --height 800

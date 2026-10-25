@@ -38,8 +38,8 @@ npx sharp-cli --input image.jpg metadata
 
 | ファイル | 用途 |
 |---|---|
-| `image-{幅}.webp` | 1x サイズ |
-| `image-{幅×2}.webp` | 2x サイズ（Retina） |
+| `image.webp` | 1x サイズ |
+| `image@2x.webp` | 2x サイズ（Retina） |
 
 ブレークポイントをまたぐ場合（例: 全幅画像）はさらに中間サイズも追加する。
 
@@ -52,16 +52,16 @@ npx sharp-cli --input image.jpg metadata
 | ファイル | 用途 |
 |---|---|
 | `image-sm.webp` | モバイル用 |
-| `image-{幅}.webp` | デスクトップ 1x |
-| `image-{幅×2}.webp` | デスクトップ 2x |
+| `image.webp` | デスクトップ 1x |
+| `image@2x.webp` | デスクトップ 2x |
 
 ## ステップ3: 画像の生成・変換
 
 ### リサイズ + WebP変換（quality 80）
 
 ```bash
-npx sharp-cli --input image.jpg --output image-1440.webp --quality 80 resize 1440
-npx sharp-cli --input image.jpg --output image-2880.webp --quality 80 resize 2880
+npx sharp-cli --input image.jpg --output image.webp --quality 80 resize 1440
+npx sharp-cli --input image.jpg --output image@2x.webp --quality 80 resize 2880
 ```
 
 ### 元画像が未圧縮の場合はその場で圧縮する
@@ -83,8 +83,8 @@ npx sharp-cli --input image.jpg --output image.jpg --quality 80
 
 ```html
 <img
-  src="image-1440.webp"
-  srcset="image-1440.webp 1440w, image-2880.webp 2880w"
+  src="image.webp"
+  srcset="image.webp 1440w, image@2x.webp 2880w"
   sizes="auto, 100vw"
   alt=""
   width="1440"
@@ -105,8 +105,8 @@ npx sharp-cli --input image.jpg --output image.jpg --quality 80
 <picture>
   <source media="(max-width: 640px)" srcset="image-sm.webp" />
   <img
-    src="image-1440.webp"
-    srcset="image-1440.webp 1440w, image-2880.webp 2880w"
+    src="image.webp"
+    srcset="image.webp 1440w, image@2x.webp 2880w"
     sizes="auto, 100vw"
     alt=""
     width="1440"
@@ -125,6 +125,6 @@ npx sharp-cli --input image.jpg --output image.jpg --quality 80
 
 ## ファイル命名規則
 
-- `{name}-{幅}.webp` でサイズを数値で明示する（例: `img-exterior-1440.webp`）
+- 1x は `{name}.webp`、2x は末尾に `@2x` を付けて `{name}@2x.webp` にする（例: `img-exterior.webp`、`img-exterior@2x.webp`）
 - モバイル別構図は `-sm` suffix（例: `img-exterior-sm.webp`）
 - typoに注意すること
