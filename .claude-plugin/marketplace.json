@@ -1,0 +1,17 @@
+{
+  "name": "h10o",
+  "owner": {
+    "name": "H-ymt",
+    "url": "https://github.com/H-ymt"
+  },
+  "metadata": {
+    "description": "Agent skills"
+  },
+  "plugins": [
+    {
+      "name": "h10o",
+      "source": "./",
+      "description": "Agent skills"
+    }
+  ]
+}

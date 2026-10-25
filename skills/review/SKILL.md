@@ -1,9 +1,9 @@
 ---
-name: h10o-review
+name: review
 description: フロントエンド全体を1回で網羅レビューする統合スキル。HTML/A11Y/SEO、CSS設計/Tailwind/トークン、JavaScript設計/エラー処理/性能を横断的に確認したいときに使う。複合依頼（ページ全体レビュー、実装品質の総点検、改修前の棚卸し）で利用する。
 ---
 
-# h10o-review
+# review
 
 ## 目的
 
@@ -12,9 +12,9 @@ description: フロントエンド全体を1回で網羅レビューする統合
 
 ## 使い方
 
-- `/h10o-review`
+- `/h10o:review`
   - 変更対象が明確な場合は、差分または対象ファイルを受け取りレビューする。
-- `/h10o-review <path-or-file>`
+- `/h10o:review <path-or-file>`
   - 指定範囲のみをレビューする。
 
 ## 想定入力
