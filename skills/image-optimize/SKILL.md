@@ -34,14 +34,14 @@ npx sharp-cli --input image.jpg metadata
 
 ### 構図が同じ場合（srcset のみ）
 
-表示幅に合わせた複数の `w` 版を用意する。目安は表示幅の1x・2x・必要に応じた中間値。
+表示幅に合わせた `w` 版を用意する。
 
 | ファイル | 用途 |
 |---|---|
 | `image.webp` | 1x サイズ |
 | `image@2x.webp` | 2x サイズ（Retina） |
 
-ブレークポイントをまたぐ場合（例: 全幅画像）はさらに中間サイズも追加する。
+基本は 1x と 2x の2枚にする。ブレークポイントをまたいで表示幅が大きく変わる場合（例: 全幅画像）は、必要に応じて中間サイズを足してよい。
 
 ### 構図が違う場合（アートディレクション）
 
@@ -126,5 +126,6 @@ npx sharp-cli --input image.jpg --output image.jpg --quality 80
 ## ファイル命名規則
 
 - 1x は `{name}.webp`、2x は末尾に `@2x` を付けて `{name}@2x.webp` にする（例: `img-exterior.webp`、`img-exterior@2x.webp`）
+- 中間サイズは幅の数値を付ける（例: `img-exterior-960.webp`）
 - モバイル別構図は `-sm` suffix（例: `img-exterior-sm.webp`）
 - typoに注意すること
