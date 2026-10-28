@@ -34,19 +34,19 @@
 
 ```astro
 <!-- 悪い -->
-<p class="text-center">地域とともに学び、<br />未来をひらく力を育てる</p>
+<p class="text-center">朝日とともに歩き、<br />夜空を照らす灯をともす</p>
 <!-- 良い -->
 <p class="text-center">
-  <span class="block"><span class="inline-block">地域とともに</span><span class="inline-block">学び、</span></span>
-  <span class="block"><span class="inline-block">未来をひらく</span><span class="inline-block">力を</span><span class="inline-block">育てる</span></span>
+  <span class="block"><span class="inline-block">朝日とともに</span><span class="inline-block">歩き、</span></span>
+  <span class="block"><span class="inline-block">夜空を照らす</span><span class="inline-block">灯を</span><span class="inline-block">ともす</span></span>
 </p>
 ```
 
-`word-break: auto-phrase` だけに頼らない。付けても割れる語は残る。鉤括弧でくくった語句、複合語、中黒でつないだ語は `inline-block` で包む。包んだ行には `<!-- prettier-ignore -->` を付け、整形で span の前後に空白が入らないようにする。`auto-phrase` は Chromium 系だけが対応しているので、Safari でも割れ方を確かめる。手で包めない CMS 本文にだけ足してよい。見出しとリードの包みの代わりにしない。文節の境界を BudouX で計算して、改行の位置と照らしてもよい（差分にはないが推奨）。
+`word-break: auto-phrase` だけに頼らない。付けても割れる語は残る。鉤括弧でくくった語句、複合語、中黒でつないだ語は `inline-block` で包む。包んだ行には `<!-- prettier-ignore -->` を付け、整形で span の前後に空白が入らないようにする。`auto-phrase` は Chromium 系だけが対応しているので、Safari でも割れ方を確かめる。手で包めない CMS 本文にだけ足してよい。見出しとリードの包みの代わりにしない。文節の境界を BudouX で計算して、改行の位置と照らしてもよい。
 
 ```astro
 <!-- prettier-ignore -->
-<p>…を大切にした<span class="inline-block">「対話のある授業」</span>を続けています。</p>
+<p>…を大切にした<span class="inline-block">「理由のある選択」</span>を続けています。</p>
 ```
 
 `word-break: keep-all` は付けない。行がはみ出す。文節を守るのは span で行う。
@@ -62,7 +62,7 @@
 
 全角空白で区切った2句のキャッチコピーは、1行に詰めず句ごとに行を分ける。収まらなければ文字サイズを1段落とす。
 
-区切りの記号や全角空白は原稿どおりにし、サイト全体で揃える。施設名や肩書の全角空白は消さない。ページタイトルの区切りは全角の縦棒 `｜` である。
+区切りの記号や全角空白は原稿どおりにし、サイト全体で揃える。施設名や肩書の全角空白は消さない。ページタイトルの区切りはサイト全体で1つにする。実例は全角の縦棒 `｜` である。
 
 包みの制約（親の幅、引用のまとまり）は [components.md](components.md) のマークアップに従う。
 
