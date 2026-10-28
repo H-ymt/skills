@@ -23,6 +23,8 @@ CMS が出す本文にも同じ見た目が当たるように設計する。本�
 - 文字やアイコンは、押せる側の補助の文字色よりさらに薄くする（実例 gray-400）。補助の文字色のままだと押せそうに見える。
 - ホバーで変えない。
 
+色のクラス名（`bg-surface-primary` や `text-gray-400` など）はトークン名の例である。案件の名前に置き換える。
+
 ```html
 <!-- 悪い -->  disabled:opacity-50 / disabled:bg-border-strong / disabled:text-text-subtle
 <!-- 良い -->  disabled:border-gray-200 disabled:bg-surface-primary disabled:text-gray-400 disabled:shadow-none
