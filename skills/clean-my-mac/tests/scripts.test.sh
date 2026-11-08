@@ -173,12 +173,25 @@ echo "uv \$*" >> "\$CALLS"
 [[ "\$1 \$2" == "cache dir" ]] && echo "$SANDBOX/.cache/uv"
 exit 0
 EOF
-  chmod +x "$SANDBOX/bin/mise" "$SANDBOX/bin/pnpm" "$SANDBOX/bin/uv"
+  cat > "$SANDBOX/bin/bun" <<'EOF'
+#!/usr/bin/env bash
+echo "bun $*" >> "$CALLS"
+if [[ "$*" == "pm cache prune --dry-run" ]]; then
+  printf '%s\n' "- left-pad@1.3.0@@@1" "- is-odd@3.0.1@@@1" "2 packages older than 30 days can be removed (checked 2)" "Run without --dry-run to remove them."
+fi
+exit 0
+EOF
+  chmod +x "$SANDBOX/bin/mise" "$SANDBOX/bin/pnpm" "$SANDBOX/bin/uv" "$SANDBOX/bin/bun"
 
   local env_prefix=(env HOME="$home" PATH="$SANDBOX/bin:$PATH")
   local dry calls
   dry="$("${env_prefix[@]}" bash "$SCRIPTS/cleanup_toolchains.sh" --dry-run 2>&1 | strip_ansi)"
   calls="$(cat "$CALLS")"
+
+  expect_contains "toolchains dry-run: bun の削除対象数を表示する" "$dry" "2 packages older than 30 days can be removed"
+  expect_no_line "toolchains dry-run: パッケージ名の列挙は出力しない" "$dry" "left-pad"
+  expect_contains "toolchains dry-run: bun は --dry-run で呼ぶ" "$calls" "bun pm cache prune --dry-run"
+  expect_no_line "toolchains dry-run: bun の実際の prune は呼ばない" "$calls" "^bun pm cache prune$"
 
   expect_contains "toolchains dry-run: mise の削除対象数を表示する" "$dry" "2 unused version"
   expect_contains "toolchains dry-run: mise は --dry-run で呼ぶ" "$calls" "mise prune --dry-run"
@@ -194,6 +207,8 @@ EOF
   expect_contains "toolchains 実行: mise prune を実行する" "$calls" "mise prune -y"
   expect_contains "toolchains 実行: pnpm store prune を実行する" "$calls" "pnpm store prune"
   expect_contains "toolchains 実行: uv cache clean を実行する" "$calls" "uv cache clean"
+  expect_contains "toolchains 実行: bun pm cache prune を実行する" "$calls" "bun pm cache prune"
+  expect_no_line "toolchains 実行: bun のキャッシュを全消しにしない" "$calls" "bun pm cache rm"
   expect_dir "toolchains 実行: 旧 pnpm ストアは自動で消さない (v10)" "$store/v10" present
   expect_dir "toolchains 実行: 旧 pnpm ストアは自動で消さない (v3)" "$store/v3" present
 }

@@ -58,6 +58,21 @@ if command -v pnpm &>/dev/null; then
   fi
 fi
 
+# bun — the global package cache is ~/.bun/install/cache (the rest of ~/.bun is
+# small). `prune` removes only packages older than 30 days, so recent projects
+# keep their cache; `bun pm cache rm` would empty it, and is not used.
+if command -v bun &>/dev/null; then
+  bun_dir=$(bun pm cache 2>/dev/null) || bun_dir=""
+  echo -e "\n${GREEN}bun cache:${RESET} $(size_of "${bun_dir:-$HOME/.bun/install/cache}")"
+  if [[ "$DRY_RUN" == "true" ]]; then
+    bun pm cache prune --dry-run 2>&1 | { grep 'can be removed' || true; } | sed 's/^/  [DRY-RUN] /'
+  elif bun pm cache prune >/dev/null 2>&1; then
+    log "✅ bun cache pruned (older than 30 days)"
+  else
+    log "  ⚠️  bun pm cache prune failed"
+  fi
+fi
+
 # uv — wheels and built packages cache. Waits for a lock held by any running
 # uv process (MCP servers and editors often hold one), so the wait is capped.
 if command -v uv &>/dev/null; then

@@ -336,6 +336,9 @@ bash "$SKILL_DIR/scripts/cleanup_toolchains.sh"
   are listed as `STALE`, never auto-deleted. Before removing one, search the user's
   projects for `packageManager` pinning that pnpm version; those projects re-download on
   their next install. Delete only after the user confirms.
+- **bun pm cache prune** removes cached packages older than 30 days from
+  `~/.bun/install/cache`. It never empties the cache (`bun pm cache rm` is not used), so
+  recent projects keep theirs.
 - **uv cache clean** waits up to 10 seconds for a lock. If another uv process holds it
   (MCP servers and editors often do), the script reports it. Stop that process and rerun;
   `--force` skips the lock, so use it only when no uv process is running.
