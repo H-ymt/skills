@@ -1,12 +1,32 @@
 #!/usr/bin/env bash
 # clean-my-mac: cleanup_caches.sh
 # Phase 1 — Safe caches, logs, and temp files. Zero risk.
-# Usage: bash cleanup_caches.sh [--dry-run]
+# Usage: bash cleanup_caches.sh [--dry-run] [--keep name[,name...]]
+#   --keep  Cache directory names under ~/Library/Caches to leave alone. Pass the
+#           caches of the tools the user said they use daily (SKILL.md, Phase -1),
+#           e.g. --keep pnpm,ms-playwright
 
 set -euo pipefail
 
 DRY_RUN=false
-[[ "${1:-}" == "--dry-run" ]] && DRY_RUN=true
+KEEP=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run) DRY_RUN=true; shift ;;
+    --keep)
+      [[ $# -ge 2 ]] || { echo "--keep needs a comma-separated list of names" >&2; exit 2; }
+      IFS=',' read -r -a _names <<<"$2"
+      KEEP=(${KEEP[@]+"${KEEP[@]}"} "${_names[@]}")
+      shift 2 ;;
+    *) echo "unknown option: $1" >&2; exit 2 ;;
+  esac
+done
+
+is_kept() {
+  local name="$1" k
+  for k in ${KEEP[@]+"${KEEP[@]}"}; do [[ "$k" == "$name" ]] && return 0; done
+  return 1
+}
 
 BOLD='\033[1m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RESET='\033[0m'
 LOG_FILE=~/clean-my-mac-log-$(date +%Y-%m-%d).txt
@@ -66,8 +86,16 @@ log "=== Phase 1: Caches & Logs — $(date) ==="
 # User caches (Homebrew excluded — Phase 2 handles it via `brew cleanup`)
 echo -e "\n${BOLD}User Caches (~/Library/Caches):${RESET}"
 for dir in ~/Library/Caches/*/; do
-  [[ "$(basename "$dir")" == "Homebrew" ]] && continue
-  delete_path "$dir" "$(basename "$dir") cache"
+  [[ -d "$dir" ]] || continue
+  name="$(basename "$dir")"
+  [[ "$name" == "Homebrew" ]] && continue
+  # macOS refuses to delete its own com.apple.* caches (Operation not permitted).
+  [[ "$name" == com.apple.* ]] && continue
+  if is_kept "$name"; then
+    log "  KEEP: $name"
+    continue
+  fi
+  delete_path "$dir" "$name cache"
 done
 
 # System caches
