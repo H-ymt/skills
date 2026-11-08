@@ -50,6 +50,19 @@ Fallback if not injected:
 SKILL_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)/skills/clean-my-mac"
 ```
 
+## When a command is denied
+
+The harness may deny a script run, an `rm -rf`, or a pipe into `head`/`tail`. Do not retry
+the same command. Give the user one self-contained line to run with the `!` prefix, scoped
+to explicit paths (never a glob over a directory you have not listed), and ask them to paste
+the output. For long script output, redirect it to a file and read that file.
+
+A command the user runs by hand bypasses the scripts' logging, so after they report the
+result, add what was removed to the log file (Hard Rules 10).
+
+Test the scripts with `bash tests/scripts.test.sh`. It runs them against a fake `HOME` and
+stub commands, so it never touches the real machine.
+
 ---
 
 ## Workflow Overview
@@ -85,7 +98,8 @@ Phase  7  →  iCloud optimization         [guidance only]
 ## Phase -1 — User Profile (ALWAYS FIRST)
 
 Before running any script, ask these questions conversationally — not as a form.
-One message. Friendly. Goal: understand what to protect.
+One message. Friendly. Goal: understand what to protect. Write every message to the user in
+the language of their last message; the quoted wording below is a template, not literal text.
 
 **Ask:**
 > "Before I touch anything, I want to make sure I don't delete something you're actively using.
@@ -147,6 +161,7 @@ The analysis script now outputs:
 8. **Large log files (>50MB)** — targeted log file scan
 9. **Duplicate VS Code extensions** — lists extensions with multiple versions installed
 10. **Inactive nvm Node versions** — shows which versions are not currently active
+11. **Docker / OrbStack** — `stopped` when the daemon is down, plus the size of OrbStack's disk image
 
 **Review ALL sections.** The biggest wins are often in Application Support and large files,
 not in the standard category table. Do not skip the deep scan results.
@@ -258,8 +273,19 @@ bash "$SKILL_DIR/scripts/cleanup_node.sh"
 > all packages. On a slow connection: 5–15 min for large projects. Still proceed?"
 
 `node_modules` directories: list only, never auto-delete. User picks which projects to clean.
+
+```bash
+bash "$SKILL_DIR/scripts/list_stale_node_modules.sh" [--days 30] [root ...]
+```
+
+It lists top-level `node_modules` oldest first with each project's last git commit date
+(or `package.json` date without git), marks `STALE` ones, and prints a `rm -rf` line for each.
+Nested directories and hidden ones (`.next`) are skipped.
 > "These are project dependencies. Deleting means you run `npm install` again per project.
 > Which ones do you want to remove?"
+
+Last activity is a commit date, not the last time the user opened the project. Ask which
+STALE projects to keep, then give the user a `rm` line without those. Reinstalling restores them.
 
 ### Python
 ```bash
@@ -347,8 +373,9 @@ bash "$SKILL_DIR/scripts/cleanup_toolchains.sh"
 
 ## Phase 3 — Docker Cleanup (Risk: MEDIUM)
 
-**Skip if Docker not installed or not running.**
-**Run `tmutil snapshot` before this phase.**
+**Skip if Docker is not installed.** If the analysis shows Docker as `stopped`, sizes are
+unknown: start Docker (OrbStack) first, or skip the phase.
+**Run `tmutil snapshot` first only for `--level=volumes`** (see Hard Rules 7).
 
 ```bash
 bash "$SKILL_DIR/scripts/cleanup_docker.sh" --dry-run
@@ -368,6 +395,12 @@ Show `docker system df` output. Then ask which level:
 bash "$SKILL_DIR/scripts/cleanup_docker.sh" --level=safe
 ```
 
+**OrbStack returns disk space to macOS with a delay.** Docker's own numbers (`docker system df`)
+drop right away, but `df` may not move until later. On one machine the OrbStack disk image
+went from 36 GB to 27 GB some time after pruning, and `df` free space did not rise
+immediately. Report the Docker-side figure as "freed inside Docker", and check `df` again
+later before calling the phase a win.
+
 ---
 
 ## Phase 3b — wp-env Orphan Instances (Risk: MEDIUM — human judgement required)
@@ -379,15 +412,20 @@ directories on disk, invisible to the Docker daemon. When you use `@wordpress/en
 (wp-env) across many projects, old project instances pile up here and become the single
 biggest wp-env storage sink (often 10–30 GB). This phase catches what Phase 3 misses.
 
-**Detection only — never auto-delete.** wp-env instances often hold live database data,
-and mapping each opaque hash to its origin project requires human judgement.
+**Detection only — never auto-delete.** Mapping each opaque hash to its origin project
+requires human judgement. wp-env's MySQL data lives in Docker volumes (`<instance>_mysql`),
+which deleting the instance directory does not touch; Phase 3 `--level=volumes` is what
+deletes them.
 
 ```bash
 bash "$SKILL_DIR/scripts/detect_wp_env.sh"
 ```
 
-The script lists every instance with its **origin project** (reverse-looked-up from the
-bind-mount sources in each `docker-compose.yml`) and tags currently-running ones `[LOADED]`.
+The script lists every instance with its **origin project** (the repository root above the
+bind-mount sources in each `docker-compose.yml`). `[LOADED]` marks instances that have Docker
+images or volumes now (Docker must be running for this). `[MISSING]` marks instances whose
+origin project directory no longer exists. An instance with no compose file shows
+`(unknown — data only)`.
 
 **Then, driving the deletion by conversation:**
 
@@ -508,7 +546,7 @@ Walk user through macOS Storage UI:
 4. **Dry-run before real run.** Show what will be deleted, get confirmation, then execute.
 5. **No `sudo rm -rf` on unknown paths.** Only paths in `reference/safe-paths.md`.
 6. **Active tool protection.** If a tool is in `active_tools`, show consequence warning — not just a confirm prompt.
-7. **Snapshot before Phase 3+.** Run `tmutil snapshot` before any medium/high-risk phase.
+7. **Snapshot before deleting what cannot be regenerated.** Run `tmutil snapshot` before Docker `--level=volumes` and before removing Xcode Archives. Phases that remove only caches and images need no snapshot. Rule 8 still blocks Phase 5 without a backup.
 8. **Backup required for snapshots.** Block Phase 5 until user confirms external backup or iCloud.
 9. **Never auto-delete Downloads, Documents, Desktop.** List only — user decides.
 10. **Log everything.** Write to `~/clean-my-mac-log-$(date +%Y-%m-%d).txt`.
@@ -542,7 +580,9 @@ Save to `~/clean-my-mac-report-$(date +%Y-%m-%d).md`:
 ╠══════════════════════════════════════════════════════════════╣
 ║ Phase 1: Caches & Logs          X GB freed   ✅              ║
 ║ Phase 2: Developer tools        X GB freed   ✅              ║
+║ Phase 2c: Toolchain stores      X GB freed   ✅              ║
 ║ Phase 3: Docker                 X GB freed   ✅              ║
+║ Phase 3b: wp-env instances      X GB freed   ✅              ║
 ║ Phase 4: AI Models              X GB freed   ✅              ║
 ║ Phase 5: TM Snapshots           X GB freed   ✅              ║
 ║ Phase 6: Large files            X GB freed   ✅              ║
@@ -574,23 +614,3 @@ This skill does NOT:
 - Access network resources
 - Use tools beyond the `allowed-tools` list above
 
----
-
-## Token Efficiency Rules
-
-- Load reference files once per session — don't re-read on each phase
-- Run Phase -1 questions in one message — no back-and-forth per question
-- Present full analysis table before generating cleanup plan — one combined output
-- Per-phase confirmations: one question per phase, wait for answer before next phase
-- Dry-run + confirmation + real-run = 3 steps max per script invocation
-
----
-
-## Open-Weight Model Rules
-
-- `SKILL_DIR` must be resolved before any `bash` call — never assume a path
-- All `bash` calls use `"$SKILL_DIR/scripts/<name>.sh"` — never inline the full path
-- Never delete without an explicit "yes" from the user in the same turn
-- `has_backup` must equal `yes` before running `cleanup_snapshots.sh` — hard block
-- Always show dry-run output before running the real command
-- Log path `~/clean-my-mac-log-$(date +%Y-%m-%d).txt` — compute date at runtime, never hardcode
