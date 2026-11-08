@@ -63,7 +63,11 @@ IOS_BACKUPS=$(size_of ~/Library/Application\ Support/MobileSync/Backup)
 
 HOMEBREW_CACHE=$(size_of ~/Library/Caches/Homebrew)
 NPM_CACHE=$(size_of ~/.npm)
-PNPM_STORE=$(size_of ~/.pnpm-store)
+# pnpm keeps one store per major version (store/v3, v10, v11 ...) under a common
+# parent. Measure the parent so stale versions show up, and resolve it with pnpm
+# itself because the location differs per OS and pnpm version.
+PNPM_STORE_PATH=$(pnpm store path 2>/dev/null) || PNPM_STORE_PATH=""
+PNPM_STORE=$(size_of "$(dirname "${PNPM_STORE_PATH:-$HOME/.pnpm-store/v0}")")
 YARN_CACHE=$(size_of ~/.yarn/cache)
 PIP_CACHE=$(size_of ~/Library/Caches/pip)
 GRADLE_CACHE=$(size_of ~/.gradle/caches)
@@ -91,8 +95,8 @@ _nm_find() {
     -o -name "node_modules" -type d -print 2>/dev/null
 }
 # Run the (expensive whole-home) scan once, derive both count and size from it.
-NM_DIRS=$( (_nm_find; true) | grep -v '.*/node_modules/.*/node_modules$' )
-NM_COUNT=$(printf '%s' "$NM_DIRS" | grep -c . | tr -d ' ')
+NM_DIRS=$( { _nm_find || true; } | { grep -v '.*/node_modules/.*/node_modules$' || true; } )
+NM_COUNT=$(printf '%s' "$NM_DIRS" | { grep -c . || true; } | tr -d ' ')
 NM_SIZE=$(printf '%s' "$NM_DIRS" | (grep . | xargs du -sk 2>/dev/null || true) | \
   awk '{sum+=$1} END {printf "%.1fGB", sum/1024/1024}')
 
