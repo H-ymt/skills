@@ -36,7 +36,9 @@ tool_installed() {
 # ─── APFS-Aware Disk Overview ────────────────────────────────────────────────
 # df on APFS shows per-volume stats which can be misleading.
 # Use diskutil to get the real container-level picture.
-read -r DISK_TOTAL DISK_USED DISK_FREE DISK_PCT < <(df -h / | awk 'NR==2{print $2, $3, $4, $5}')
+# "/" is the sealed, read-only system volume (about 12Gi); user data lives on the
+# Data volume, so that is the one whose usage matters.
+read -r DISK_TOTAL DISK_USED DISK_FREE DISK_PCT < <(df -h /System/Volumes/Data | awk 'NR==2{print $2, $3, $4, $5}')
 
 # Get real APFS container stats (Data volume is where user files live)
 DATA_VOLUME_USED=""
@@ -76,9 +78,22 @@ GO_MOD_CACHE=$(size_of ~/go/pkg)
 
 DOCKER_INSTALLED=$(tool_installed docker)
 DOCKER_INFO=""
+DOCKER_RUNNING=no
 if [[ "$DOCKER_INSTALLED" == "yes" ]]; then
-  DOCKER_INFO=$(docker system df 2>/dev/null | awk 'NR==2{print $4" imgs"}' || echo "unknown")
+  if docker info &>/dev/null; then
+    DOCKER_RUNNING=yes
+    DOCKER_INFO=$(docker system df 2>/dev/null | awk 'NR==2{print $4" imgs"}') || DOCKER_INFO="unknown"
+  else
+    DOCKER_INFO="stopped"
+  fi
 fi
+
+# OrbStack keeps all Docker data in one sparse disk image. Deleting images frees
+# space inside it, and OrbStack returns that space to macOS only later, so this
+# size is the real cost of Docker on this Mac.
+ORBSTACK_IMG=$( (ls -d "$HOME"/Library/Group\ Containers/*.dev.orbstack/data/data.img.raw 2>/dev/null || true) | sed -n 1p )
+ORBSTACK_SIZE=""
+[[ -n "$ORBSTACK_IMG" ]] && ORBSTACK_SIZE=$(size_of "$ORBSTACK_IMG")
 
 # AI model files — wrap xargs in subshell so empty-input failure doesn't propagate
 AI_SIZE=$( (find ~ -type f \( -name "*.gguf" -o -name "*.safetensors" \) -size +100M 2>/dev/null || true) | \
@@ -167,6 +182,9 @@ fi
 if [[ "$HAS_DOCKER" == "yes" ]]; then
   printf "║  %-28s %-10s  ${YELLOW}MED${RESET}     ⚠️  Confirm    ║\n" "Docker Images/Data" "${DOCKER_INFO:-?}"
 fi
+if [[ -n "$ORBSTACK_IMG" ]]; then
+  printf "║  %-28s %-10s  ${YELLOW}MED${RESET}     ⚠️  Confirm    ║\n" "OrbStack disk image" "$ORBSTACK_SIZE"
+fi
 
 printf "║  %-28s %-10s  ${YELLOW}MED${RESET}     ⚠️  Review    ║\n" "node_modules ($NM_COUNT dirs)" "$NM_SIZE"
 printf "║  %-28s %-10s  ${RED}HIGH${RESET}    ❗ List only  ║\n" "AI Model Files" "${AI_SIZE:-0B}"
@@ -193,6 +211,15 @@ echo "║  $([ "$HAS_XCODE" == "yes" ]  && echo "✅" || echo "⬜") Xcode    $(
 echo "║  $([ "$HAS_PNPM" == "yes" ]   && echo "✅" || echo "⬜") pnpm     $([ "$HAS_YARN" == "yes" ]  && echo "✅" || echo "⬜") Yarn      $([ "$HAS_FLUTTER" == "yes" ] && echo "✅" || echo "⬜") Flutter   $([ "$HAS_OLLAMA" == "yes" ] && echo "✅" || echo "⬜") Ollama"
 echo "║  $([ "$HAS_GO" == "yes" ]     && echo "✅" || echo "⬜") Go       $([ "$HAS_RUST" == "yes" ]  && echo "✅" || echo "⬜") Rust      $([ "$HAS_PYTHON" == "yes" ]  && echo "✅" || echo "⬜") Python    $([ "$HAS_GRADLE" == "yes" ] && echo "✅" || echo "⬜") Gradle"
 echo -e "${BOLD}╚══════════════════════════════════════════════════════════════╝${RESET}"
+
+if [[ "$DOCKER_INSTALLED" == "yes" && "$DOCKER_RUNNING" == "no" ]]; then
+  echo ""
+  echo "Docker is not running, so image and volume sizes are unknown. Start Docker (OrbStack) before phase 3."
+fi
+if [[ -n "$ORBSTACK_IMG" ]]; then
+  echo ""
+  echo "OrbStack gives disk space back to macOS only after a delay. After phase 3, judge by df some time later, not by docker system df."
+fi
 
 # ─── Top Directories ─────────────────────────────────────────────────────────
 echo ""
